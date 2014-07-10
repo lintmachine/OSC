@@ -559,6 +559,7 @@ void OSCMessage::decodeData(uint8_t incomingByte){
                         char * str = (char *) incomingBuffer;
                         set(i, str);
                         clearIncomingBuffer();
+//                        Serial.println("Move to state DATA_PADDING");
                         decodeState = DATA_PADDING;
                     }
                     break;
@@ -577,6 +578,7 @@ void OSCMessage::decodeData(uint8_t incomingByte){
                             clearIncomingBuffer();
 
                             if (padSize(datum->bytes) > 0) {
+//                                Serial.println("Move to state DATA_PADDING");
                                 decodeState = DATA_PADDING;
                             }
                         }
@@ -592,11 +594,15 @@ void OSCMessage::decodeData(uint8_t incomingByte){
 //does not validate the incoming OSC for correctness
 void OSCMessage::decode(uint8_t incomingByte){
 
+//    Serial.print(incomingBufferSize, DEC);
+//    Serial.print(" ");
+
     addToIncomingBuffer(incomingByte);
 
     switch (decodeState){
         case STANDBY:
             if (incomingByte == '/'){
+////                Serial.println("Move to state ADDRESS");
                 decodeState = ADDRESS;
             }
             break;
@@ -606,22 +612,40 @@ void OSCMessage::decode(uint8_t incomingByte){
 				//decode the address
                 decodeAddress();
 				//next state
+////                Serial.println("Move to state ADDRESS_PADDING");
 				decodeState = ADDRESS_PADDING;
 			} 
 			break;
 		case ADDRESS_PADDING:
-            //it does not count the padding
+            // it does not count the padding
 			if (incomingByte==','){
-				//next state
-				decodeState = TYPES;
                 clearIncomingBuffer();
+////                Serial.println("Move to state TYPES");
+				decodeState = TYPES;
 			}
 			break;
         case TYPES:
             if (incomingByte != 0) {
                 decodeType(incomingByte);
-            } else {
+            } 
+            else {
+                if (padSize(incomingBufferSize + 1) == 0) {
+                    // No padding needed
+                    clearIncomingBuffer();
+//                    Serial.println("Move to state DATA");
+                    decodeState = DATA;
+                }
+                else {
+                    // Padding needed
+//                    Serial.println("Move to state TYPES_PADDING");
+                    decodeState = TYPES_PADDING;
+                }
+            }
+            break;
+        case TYPES_PADDING:
+            if (padSize(incomingBufferSize + 1) == 0) {
                 clearIncomingBuffer();
+//                Serial.println("Move to state DATA");
                 decodeState = DATA;
             }
             break;
@@ -637,6 +661,7 @@ void OSCMessage::decode(uint8_t incomingByte){
                         int dataPad = padSize(datum->bytes);
                         if (incomingBufferSize == dataPad){
                             clearIncomingBuffer();
+//                            Serial.println("Move to state DATA");
                             decodeState = DATA;
                         }
                         break;
@@ -644,7 +669,6 @@ void OSCMessage::decode(uint8_t incomingByte){
                 }
             }
 			break;
-
     }
 }
 
